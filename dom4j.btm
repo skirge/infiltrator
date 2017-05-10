@@ -1,0 +1,40 @@
+RULE XML trace SAXReader parse
+CLASS org.dom4j.io.SAXReader
+METHOD read
+AT ENTRY
+IF TRUE
+    DO traceStack("*** org.dom4j.io.SAXReader.read("+ $1 + " \n", 15)
+ENDRULE
+
+RULE XML trace org.dom4j.tree.AbstractNode selectNodes
+CLASS org.dom4j.tree.AbstractNode
+METHOD selectNodes
+AT ENTRY
+IF TRUE
+    DO traceStack("*** org.dom4j.tree.AbstractNode.selectNodes("+ $1 + " \n", 15)
+ENDRULE
+
+RULE XML trace org.dom4j.Document selectNodes
+CLASS org.dom4j.Document
+METHOD selectNodes
+AT ENTRY
+IF TRUE
+    DO traceStack("*** org.dom4j.Document.selectNodes("+ $1 + " \n", 15)
+ENDRULE
+
+RULE XML trace org.dom4j.tree.AbstractNode selectSingleNode
+CLASS org.dom4j.tree.AbstractNode
+METHOD selectSingleNode
+AT ENTRY
+IF TRUE
+    DO traceStack("*** org.dom4j.tree.AbstractNode.selectSingleNode("+ $2 + " \n", 15)
+ENDRULE
+
+RULE XML trace org.dom4j.Node selectNodes
+CLASS org.dom4j.Node
+METHOD selectNodes
+AT ENTRY
+IF TRUE
+    DO traceStack("*** org.dom4j.Node.selectNodes("+ $1 + " \n", 15)
+ENDRULE
+

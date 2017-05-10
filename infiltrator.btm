@@ -1,0 +1,667 @@
+########################################################################
+#
+# Rule to trace class load
+#
+
+RULE ClassLoadMonitor trace create
+CLASS java.lang.ClassLoader
+METHOD defineClass(String, byte[], int, int, ProtectionDomain)
+AT EXIT
+IF TRUE
+DO traceStack("*** Called defineClass(" + $1 + ") in thread " + Thread.currentThread().getName() + "\n", 10)
+ENDRULE
+
+RULE ClassLoadMonitor trace java.util.ResourceBundle
+CLASS java.util.ResourceBundle
+METHOD getBundle
+AT EXIT
+IF TRUE
+DO traceStack("*** Called getBundle(" + $1 + ") in thread " + Thread.currentThread().getName() + "\n", 10)
+ENDRULE
+
+########################################################################
+#
+# Rule to trace class instance creation
+#
+
+RULE Constructor trace newInstance
+CLASS java.lang.reflect.Constructor
+METHOD newInstance(Object[])
+AT EXIT
+IF TRUE
+    DO setTriggering(false);
+        traceStack("*** Called newInstance(" + $0.getDeclaringClass() + ") in thread " + Thread.currentThread().getName() + "\n", 10)
+ENDRULE
+
+
+########################################################################
+#
+# Rule to trace library load
+#
+
+RULE Runtime trace loadLibrary
+CLASS java.lang.Runtime
+METHOD loadLibrary(String)
+AT EXIT
+IF TRUE
+DO traceStack("*** INSECURE Called java.lang.Runtime.loadLibrary(" + $1 + ") in thread " + Thread.currentThread().getName() + "\n", 10)
+ENDRULE
+
+RULE Runtime trace load
+CLASS java.lang.Runtime
+METHOD load(String)
+AT EXIT
+IF TRUE
+DO traceStack("*** INSECURE  Called java.lang.Runtime.load(" + $1 + ") in thread " + Thread.currentThread().getName() + "\n", 10)
+ENDRULE
+
+RULE System trace loadLibrary
+CLASS java.lang.System
+METHOD loadLibrary(String)
+AT EXIT
+IF TRUE
+DO traceStack("*** INSECURE  Called java.lang.System.loadLibrary(" + $1 + ") in thread " + Thread.currentThread().getName() + "\n", 10)
+ENDRULE
+
+RULE System trace load
+CLASS java.lang.System
+METHOD load(String)
+AT EXIT
+IF TRUE
+DO traceStack("*** INSECURE  Called java.lang.System.load(" + $1 + ") in thread " + Thread.currentThread().getName() + "\n", 10)
+ENDRULE
+
+########################################################################
+# Crypto
+#
+#
+RULE BadPaddingException trace
+CLASS javax.crypto.BadPaddingException
+METHOD <init>
+AT EXIT
+IF TRUE
+DO traceStack("***  INSECURE  Called " + $0 + "() in thread " + Thread.currentThread().getName() + "\n", 10)
+ENDRULE
+
+RULE Cipher trace
+CLASS javax.crypto.Cipher
+METHOD getInstance
+AT EXIT
+IF TRUE
+DO traceStack("*** Called javax.crypto.Cipher.getInstance(" + $1 + ") in thread " + Thread.currentThread().getName() + "\n", 10)
+ENDRULE
+
+# TODO: check parameters for sensitive data
+RULE Cipher trace doFinal
+CLASS ^javax.crypto.Cipher
+METHOD doFinal
+AT ENTRY
+IF TRUE
+DO traceStack("*** Called " + $0 + "(" + $1 + ") in thread " + Thread.currentThread().getName() + "\n", 10)
+ENDRULE
+
+# TODO: check parameters for sensitive data
+RULE Cipher trace update
+CLASS ^javax.crypto.Cipher
+METHOD update
+AT ENTRY
+IF TRUE
+DO traceStack("*** Called " + $0 + "(" + $1 + ") in thread " + Thread.currentThread().getName() + "\n", 10)
+ENDRULE
+
+RULE KeyGenerator trace
+CLASS javax.crypto.KeyGenerator
+METHOD getInstance
+AT EXIT
+IF TRUE
+DO traceStack("*** Called " + $0 + "(" + $1 + ") in thread " + Thread.currentThread().getName() + "\n", 10)
+ENDRULE
+
+RULE ArrayEquals trace equals
+CLASS java.util.Arrays
+METHOD equals
+AT EXIT
+IF callerCheck(".*rypto.*")
+DO traceStack("*** Called " + $0 + "(" + $1 + ") in crypto code in thread " + Thread.currentThread().getName() + "\n", 10)
+ENDRULE
+
+########################################################################
+#
+# Deserialization
+#
+RULE Deserialization trace readObject
+CLASS ^java.lang.Object
+METHOD readObject(java.io.ObjectInputStream)
+AT EXIT
+IF TRUE
+DO traceStack("***  INSECURE  Called " + $0 + "(" + $1 + ") in thread " + Thread.currentThread().getName() + "\n", 10)
+ENDRULE
+
+RULE Deserialization trace readResolve
+CLASS ^java.lang.Object
+METHOD readResolve
+AT EXIT
+IF TRUE
+DO traceStack("***  INSECURE Called " + $0 + "(" + $1 + ") in thread " + Thread.currentThread().getName() + "\n", 10)
+ENDRULE
+
+RULE Deserialization trace readExternal
+CLASS ^java.lang.Object
+METHOD readExternal(java.io.ObjectInput)
+AT EXIT
+IF TRUE
+DO traceStack("***  INSECURE  Called " + $0 + "(" + $1 + ") in thread " + Thread.currentThread().getName() + "\n", 10)
+ENDRULE
+
+RULE Deserialization trace readNoData
+CLASS ^java.lang.Object
+METHOD readNoData
+AT EXIT
+IF TRUE
+DO traceStack("***  INSECURE Called " + $0 + "(" + $1 + ") in thread " + Thread.currentThread().getName() + "\n", 10)
+ENDRULE
+
+RULE Deserialization trace validateObject
+CLASS ^java.lang.Object
+METHOD validateObject
+AT EXIT
+IF TRUE
+DO traceStack("***  INSECURE Called " + $0 + "(" + $1 + ") in thread " + Thread.currentThread().getName() + "\n", 10)
+ENDRULE
+
+RULE java.io.ObjectInputStream trace readObject
+CLASS java.io.ObjectInputStream
+METHOD readObject
+AT EXIT
+IF TRUE
+DO traceStack("***  INSECURE Called " + $0 + "() in thread " + Thread.currentThread().getName() + "\n", 10)
+ENDRULE
+
+RULE java.io.ObjectInputStream trace defaultReadObject
+CLASS java.io.ObjectInputStream
+METHOD defaultReadObject
+AT EXIT
+IF TRUE
+DO traceStack("***  INSECURE Called " + $0 + "() in thread " + Thread.currentThread().getName() + "\n", 10)
+ENDRULE
+
+RULE java.io.ObjectInputStream trace readUnshared
+CLASS java.io.ObjectInputStream
+METHOD readUnshared
+AT EXIT
+IF TRUE
+DO traceStack("***  INSECURE Called " + $0 + "() in thread " + Thread.currentThread().getName() + "\n", 10)
+ENDRULE
+
+########################################################################
+#
+# Rule to trace finalize method
+#
+
+RULE trace Object.finalize
+CLASS ^java.lang.Object
+METHOD finalize
+IF NOT callerEquals("finalize")
+DO traceStack("*** Called java.lang.Object.finalize in class " + $0 + " in thread " + Thread.currentThread().getName() + "\n", 10)
+ENDRULE
+
+
+########################################################################
+#
+# Rule to trace create of file object creation
+#
+
+RULE FileMonitor trace File create
+CLASS java.io.File
+METHOD <init>(String)
+AT RETURN
+IF TRUE
+DO traceStack("*** Opened " + $1 + " for read in thread " + Thread.currentThread().getName() + "\n", 10)
+ENDRULE
+
+RULE FileMonitor trace File create with parent
+CLASS java.io.File
+METHOD <init>(java.io.File, String)
+AT RETURN
+IF TRUE
+DO traceStack("*** Opened " + $2 + " in " + $1.getPath() + " for read in thread " + Thread.currentThread().getName() + "\n", 10)
+ENDRULE
+
+RULE FileMonitor trace File create with parent 2
+CLASS java.io.File
+METHOD <init>(String, String)
+AT RETURN
+IF TRUE
+DO traceStack("*** Opened " + $2 + " in " + $1 + "for read in thread " + Thread.currentThread().getName() + "\n", 10)
+ENDRULE
+
+########################################################################
+#
+# Rule to trace create of file input stream from File
+#
+
+RULE FileMonitor trace FileInputStream create from File
+CLASS java.io.FileInputStream
+METHOD <init>(java.io.File)
+AT RETURN
+IF TRUE
+DO traceStack("*** Opened " + $1.getPath() + " for read in thread " + Thread.currentThread().getName() + "\n", 10)
+ENDRULE
+
+########################################################################
+#
+# Rule to trace close of file input stream close
+#
+
+RULE FileMonitor trace FileInputStream close
+CLASS java.io.FileInputStream
+METHOD close
+AT RETURN
+IF TRUE
+DO traceStack("*** Closed " + $0 + " in thread " + Thread.currentThread().getName() + "\n", 10)
+ENDRULE
+
+########################################################################
+#
+# Rule to trace create of file output stream from File
+#
+
+RULE FileMonitor trace FileOutputStream create from File
+CLASS java.io.FileOutputStream
+METHOD <init>(java.io.File, boolean)
+AT RETURN
+IF TRUE
+      DO traceStack("*** Opened " + $1.getPath() + " for " + ($2 ? "write" : "append") +" in thread " + Thread.currentThread().getName() + "\n", 10)
+ENDRULE
+
+
+########################################################################
+#
+# Rule to trace close of file output
+#
+
+RULE FileMonitor trace FileOutputStream close
+CLASS java.io.FileOutputStream
+METHOD close()
+AT RETURN
+IF TRUE
+DO traceStack("*** Closed " + $0 + " in thread " + Thread.currentThread().getName() + "\n", 10)
+ENDRULE
+
+RULE FileMonitor trace java.io.File createTempFile
+CLASS java.io.File
+METHOD createTempFile
+AT RETURN
+IF TRUE
+      DO traceStack("*** Opened " + $* + " in thread " + Thread.currentThread().getName() + "\n", 10)
+ENDRULE
+
+########################################################################
+#
+# Rule to trace create of file output stream from File
+#
+
+RULE FileMonitor trace java.nio.file.Paths get
+CLASS java.nio.file.Files
+METHOD createTempDirectory
+AT RETURN
+IF TRUE
+      DO traceStack("*** Opened " + $* + " in thread " + Thread.currentThread().getName() + "\n", 10)
+ENDRULE
+
+RULE FileMonitor trace java.io.RandomAccessFile writeUTF
+CLASS java.io.RandomAccessFile
+METHOD writeUTF
+AT RETURN
+IF TRUE
+      DO traceStack("*** writeUTF " + $* + " in thread " + Thread.currentThread().getName() + "\n", 10)
+ENDRULE
+
+########################################################################
+#
+# Rule to trace LDAP methods
+#
+
+RULE LDAPMonitor trace DirContext search
+INTERFACE javax.naming.directory.DirContext
+METHOD search
+AT RETURN
+IF TRUE
+    DO traceStack("*** Called " + $0 + "(" + $* + ") in thread " + Thread.currentThread().getName() + "\n", 10)
+ENDRULE
+
+RULE LDAPMonitor trace InitialLdapContext search
+CLASS javax.naming.ldap.InitialLdapContext
+METHOD <init>
+AT RETURN
+IF TRUE
+    DO traceStack("*** Called " + $0 + "(" + $* + ") in thread " + Thread.currentThread().getName() + "\n", 10)
+ENDRULE
+
+########################################################################
+#
+# Check logs for sensitive data
+#
+
+RULE Log monitor trace log
+CLASS java.util.logging.Logger
+METHOD log
+AT RETURN
+IF TRUE
+    DO traceStack("*** Called " + $0 + "(" + $* + ") in thread " + Thread.currentThread().getName() + "\n", 10)
+ENDRULE
+
+########################################################################
+#
+# REST
+#
+
+#RULE REST Monitor trace RequestMappings
+#CLASS @org.springframework.web.bind.annotation.RestController
+#METHOD @org.springframework.web.bind.annotation.RequestMapping
+#AT RETURN
+#IF TRUE
+#      DO traceStack("*** Opened " + $* + " in thread " + Thread.currentThread().getName() + "\n", 10)
+#ENDRULE
+
+########################################################################
+#
+# Runtime
+#
+
+RULE Runtime trace exec
+CLASS java.lang.Runtime
+METHOD exec(String)
+AT ENTRY
+IF TRUE
+      DO traceStack("***  INSECURE java.lang.Runtime.exec( " + $1 + ") in thread " + Thread.currentThread().getName() + "\n", 10)
+ENDRULE
+
+RULE ProcessBuilder trace exec
+CLASS java.lang.ProcessBuilder
+METHOD start
+AT ENTRY
+IF TRUE
+      DO traceStack("***  INSECURE java.lang.ProcessBuilder.start( " + $0.command() + ") in thread " + Thread.currentThread().getName() + "\n", 10)
+ENDRULE
+
+########################################################################
+#
+# Rule to trace ServerSocket creation
+#
+
+RULE ServerSocket trace create
+CLASS java.net.ServerSocket
+METHOD <init>(int, int, InetAddress)
+AT EXIT
+IF TRUE
+DO traceStack("*** server create " + $0, 15)
+ENDRULE
+
+########################################################################
+#
+# Rule to trace ServerSocket creation failed with invalid port
+#
+
+RULE ServerSocket trace create failed with invalid port
+CLASS java.net.ServerSocket
+METHOD <init>(int, int, InetAddress)
+AT THROW 1
+IF TRUE
+DO traceStack("*** server create failed with invalid port " + $0, 15)
+ENDRULE
+
+########################################################################
+#
+# Rule to trace ServerSocket creation failed with security exception
+#
+
+RULE ServerSocket trace create failed with security exception
+CLASS java.net.ServerSocket
+METHOD <init>(int, int, InetAddress)
+AT THROW 2
+IF TRUE
+DO traceStack("*** server create failed with security exception " + $0, 15)
+ENDRULE
+
+########################################################################
+#
+# Rule to trace ServerSocket creation failed with IOException
+#
+
+RULE ServerSocket trace create failed with IOException
+CLASS java.net.ServerSocket
+METHOD <init>(int, int, InetAddress)
+AT THROW 3
+IF TRUE
+DO traceStack("*** server create failed with IOException " + $0, 15)
+ENDRULE
+
+########################################################################
+#
+# Rule to trace ServerSocket bind
+#
+
+RULE ServerSocket trace bind
+CLASS ^java.net.ServerSocket
+METHOD bind(SocketAddress, int)
+AT EXIT
+IF TRUE
+DO traceStack("*** server bind " + $0, 15)
+ENDRULE
+
+########################################################################
+#
+# Rule to trace ServerSocket accept
+#
+
+#RULE ServerSocket trace accept
+#CLASS ^java.net.ServerSocket
+#METHOD accept()
+#AT EXIT
+#IF TRUE
+#DO traceStack("*** server accept " + $0, 15)
+#ENDRULE
+
+########################################################################
+#
+# Rule to trace ServerSocket close
+#
+# the AT CALL close location means we do not trace calls to already closed sockets
+#
+
+#RULE ServerSocket trace close
+#CLASS ^java.net.ServerSocket
+#METHOD close
+#AT CALL close
+#IF TRUE
+#DO traceStack("*** server close " + $0, 15)
+#ENDRULE
+
+########################################################################
+#
+# Rule to trace socket create
+#
+
+RULE Socket trace create
+CLASS java.net.Socket
+METHOD <init>(SocketAddress, SocketAddress, boolean)
+AT EXIT
+IF TRUE
+DO traceStack("*** create " + $0, 15)
+ENDRULE
+
+########################################################################
+#
+# Rule to trace socket create failed with invalid address
+#
+
+RULE Socket trace create failed with invalid address
+CLASS java.net.Socket
+METHOD <init>(SocketAddress, SocketAddress, boolean)
+AT THROW 1
+IF TRUE
+DO traceStack("*** create failed with invalid address exception " + $0, 15)
+ENDRULE
+
+########################################################################
+#
+# Rule to trace socket create failed with IOException
+#
+
+RULE Socket trace create failed with IOException
+CLASS java.net.Socket
+METHOD <init>(SocketAddress, SocketAddress, boolean)
+AT THROW 2
+IF TRUE
+DO traceStack("*** create failed with IOException " + $0, 15)
+ENDRULE
+
+########################################################################
+#
+# Rule to trace socket bind
+#
+
+RULE Socket trace bind
+CLASS ^java.net.Socket
+METHOD bind(SocketAddress)
+AT EXIT
+IF TRUE
+DO traceStack("*** bind " + $0, 15)
+ENDRULE
+
+########################################################################
+#
+# Rule to trace socket connect
+#
+
+RULE Socket trace connect
+CLASS ^java.net.Socket
+METHOD connect(SocketAddress, int)
+AT EXIT
+IF TRUE
+DO traceStack("*** connect " + $0, 15)
+ENDRULE
+
+########################################################################
+#
+# Rule to trace socket close
+#
+# the AT CALL close location means we do not trace calls to already closed sockets
+#
+
+#RULE Socket trace close
+#CLASS ^java.net.Socket
+#METHOD close()
+#AT CALL close
+#IF TRUE
+#DO traceStack("*** close " + $0, 15)
+#ENDRULE
+
+########################################################################
+#
+# Rule to trace unsafe native method calls
+#
+
+RULE Unsafe trace copy
+CLASS sun.misc.Unsafe
+METHOD allocateMemory
+AT ENTRY
+IF TRUE
+DO traceStack("*** sun.misc.Unsafe.allocateMemory \n", 15)
+ENDRULE
+
+########################################################################
+#
+# Rule to trace URL methods
+#
+
+RULE URL trace openConnection1
+CLASS java.net.URL
+METHOD openConnection()
+AT ENTRY
+IF TRUE
+DO traceStack("*** java.net.URL.openConnection("+ $0.getHost() + ":" + $0.getPort() + "/" + $0.getPath() + "?" + $0.getQuery() + " \n", 15)
+ENDRULE
+
+RULE URL trace openConnection2
+CLASS java.net.URL
+METHOD openConnection(java.net.Proxy)
+AT ENTRY
+IF TRUE
+DO traceStack("*** java.net.URL.openConnection("+ $0.getHost() + ":" + $0.getPort() + "/" + $0.getPath() + "?" + $0.getQuery() + " \n", 15)
+ENDRULE
+
+RULE URL trace openConnection3
+CLASS java.net.URL
+METHOD openConnection(URL)
+AT ENTRY
+IF TRUE
+DO traceStack("*** java.net.URL.openConnection("+ $1.getHost() + ":" + $1.getPort() + "/" + $1.getPath() + "?" + $1.getQuery() + " \n", 15)
+ENDRULE
+
+########################################################################
+#
+# Rule to trace XML parsing
+#
+
+#RULE XML trace SAXReader parse
+#CLASS org.dom4j.io.SAXReader
+#METHOD read
+#AT ENTRY
+#IF TRUE
+#DO traceStack("*** java.net.URL.openConnection("+ $0.getHost() + ":" + $0.getPort() + "/" + $0.getPath() + "?" + $0.getQuery() + " \n", 15)
+#ENDRULE
+
+RULE XML trace javax.xml.parsers.SAXParser
+CLASS javax.xml.parsers.SAXParser
+METHOD parse
+AT ENTRY
+IF TRUE
+DO traceStack("*** javax.xml.parsers.SAXParser.parse("+ $2 + " \n", 15)
+ENDRULE
+
+RULE XML trace XPath
+CLASS javax.xml.xpath.XPath
+METHOD evaluate
+AT ENTRY
+IF TRUE
+DO traceStack("*** javax.xml.xpath.XPath.evaluate("+ $1 + " \n", 15)
+ENDRULE
+
+RULE XML trace javax.xml.parsers.DocumentBuilder
+CLASS javax.xml.parsers.DocumentBuilder
+METHOD parse
+AT ENTRY
+IF TRUE
+DO traceStack("*** javax.xml.parsers.DocumentBuilder.parse("+ $3 + " \n", 15)
+ENDRULE
+
+########################################################################
+#
+# ZIP
+#
+
+RULE ZIP trace java.util.zip.GZIPInputStream
+CLASS java.util.zip.GZIPInputStream
+METHOD <init>
+AT ENTRY
+IF TRUE
+DO traceStack("*** java.util.zip.GZIPInputStream.<init>()" + " \n", 15)
+ENDRULE
+
+RULE ZIP trace java.util.zip.Deflater
+CLASS java.util.zip.Deflater
+METHOD <init>
+AT ENTRY
+IF TRUE
+DO traceStack("*** java.util.zip.Deflater.<init>()" + " \n", 15)
+ENDRULE
+
+RULE ZIP trace java.util.zip.ZIPInputStream
+CLASS java.util.zip.ZIPInputStream
+METHOD <init>
+AT ENTRY
+IF TRUE
+DO traceStack("*** java.util.zip.ZIPInputStream.<init>()" + " \n", 15)
+ENDRULE
