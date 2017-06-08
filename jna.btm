@@ -1,0 +1,23 @@
+RULE JNA trace loadLibrary
+CLASS com.sun.jna.Native
+METHOD loadLibrary(String)
+AT EXIT
+IF TRUE
+DO traceStack("*** INSECURE Called com.sun.jna.Native.loadLibrary(" + $1 + ") in thread " + Thread.currentThread().getName() + "\n", 10)
+ENDRULE
+
+RULE JNA trace free
+CLASS com.sun.jna.Native
+METHOD free(long)
+AT EXIT
+IF TRUE
+DO traceStack("*** INSECURE Called com.sun.jna.Native.free(" + $1 + ") in thread " + Thread.currentThread().getName() + "\n", 10)
+ENDRULE
+
+RULE JNA trace malloc
+CLASS com.sun.jna.Native
+METHOD malloc(long)
+AT EXIT
+IF TRUE
+DO traceStack("*** INSECURE Called com.sun.jna.Native.malloc(" + $1 + ") in thread " + Thread.currentThread().getName() + "\n", 10)
+ENDRULE
